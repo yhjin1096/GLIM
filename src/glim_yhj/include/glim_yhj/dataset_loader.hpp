@@ -14,16 +14,18 @@ class DatasetLoader
 {
     private:
     public:
-        DatasetLoader(const std::string& dataset_path, int& num_images, cv::Mat& intrinsic_mat)
+        DatasetLoader(const std::string& dataset_path, int& num_images, cv::Mat& intrinsic_mat, std::vector<double>& time_seq)
         {
             num_images = countImages(dataset_path + "/image_2");
             intrinsic_mat = readIntrinsicMat(dataset_path + "/calib.txt").clone();
+            time_seq = getTimeSequence(dataset_path + "/times.txt");
         }
         ~DatasetLoader() = default;
 
         int countImages(const std::string &path);
         std::vector<Pose> readGTPose(const std::string& path);
         cv::Mat readIntrinsicMat(const std::string& path);
+        std::vector<double> getTimeSequence(const std::string& path);
 };
 
 const std::string imageExtensions[] = {".jpg", ".jpeg", ".png", ".gif", ".bmp"};
@@ -155,6 +157,30 @@ cv::Mat DatasetLoader::readIntrinsicMat(const std::string& path)
     }
 
     return intrinsic_mat.clone();
+}
+
+std::vector<double> DatasetLoader::getTimeSequence(const std::string& path)
+{
+    std::vector<double> times;
+    std::ifstream file(path);
+    
+    if (!file.is_open()) {
+        std::cerr << "Error opening file: " << path << std::endl;
+        return times;
+    }
+    
+    std::string line;
+    while (std::getline(file, line)) {
+        try {
+            double time = std::stod(line);
+            times.push_back(time);
+        } catch (const std::exception& e) {
+            std::cerr << "Error converting line to double: " << line << std::endl;
+        }
+    }
+    
+    file.close();
+    return times;
 }
 
 #endif

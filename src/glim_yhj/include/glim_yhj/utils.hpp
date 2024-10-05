@@ -34,9 +34,9 @@ class Utils
             node.disparity16S.convertTo(node.disparity32F, CV_32F, 1.f / 16.f);
         }
 
-        sensor_msgs::PointCloud2 convert_PointCloud2(const std::vector<PCL>& data, const std::string& frame_name)
+        sensor_msgs::PointCloud2 convert_PointCloud2(const std::vector<PCL>& data, double time_seq, const std::string& frame_name)
         {
-            pcl::PointCloud<pcl::PointXYZRGB> cloud;
+            pcl::PointCloud<pcl::PointXYZ> cloud;
             cloud.width = data.size();
             cloud.height = 1;
             cloud.is_dense = false;
@@ -47,14 +47,15 @@ class Utils
                 cloud.points[i].x = data[i].pts(0);
                 cloud.points[i].y = data[i].pts(1);
                 cloud.points[i].z = data[i].pts(2);
-                cloud.points[i].r = data[i].clr(0);
-                cloud.points[i].g = data[i].clr(1);
-                cloud.points[i].b = data[i].clr(2);
+                // cloud.points[i].r = data[i].clr(0);
+                // cloud.points[i].g = data[i].clr(1);
+                // cloud.points[i].b = data[i].clr(2);
             }
 
             sensor_msgs::PointCloud2 output;
             pcl::toROSMsg(cloud, output);
             output.header.frame_id = frame_name;
+            output.header.stamp = ros::Time(time_seq);
             return output;
         }
 
@@ -65,29 +66,32 @@ class Utils
             int rows = node.disparity32F.rows;
             int cols = node.disparity32F.cols;
 
-            double fx = node.left_cam.intrinsic_mat.at<double>(0,0);
-            double fy = node.left_cam.intrinsic_mat.at<double>(1,1);
-            double cx = node.left_cam.intrinsic_mat.at<double>(0,2);
-            double cy = node.left_cam.intrinsic_mat.at<double>(1,2);
-            double bl = -0.5333;
+            float fx = node.left_cam.intrinsic_mat.at<double>(0,0);
+            float fy = node.left_cam.intrinsic_mat.at<double>(1,1);
+            float cx = node.left_cam.intrinsic_mat.at<double>(0,2);
+            float cy = node.left_cam.intrinsic_mat.at<double>(1,2);
+            float bl = 0.5333;
             
             PCL pcl;
-            double e, f, disp, depth;
+            float X, Y, Z, disp;
             for(int r = 0; r < rows; r++)
             {
                 for(int c = 0; c < cols; c++) 
                 {
-                    e = (c - cx) / fx;
-                    f = (r - cy) / fy;
-
                     disp  = node.disparity32F.at<float>(r,c);
+                    
                     if(disp <= 0.0){continue;}
+
+                    Z = fx * bl / disp;
+                    X = (c - cx) * Z / fx;
+                    Y = (r - cy) * Z / fy;
                     
-                    depth = fx * bl / disp;
-                    
-                    pcl.pts[0] = e * depth; // camera coordinate x
-                    pcl.pts[1] = f * depth; // camera coordinate y
-                    pcl.pts[2] = depth;     // camera coordinate z
+                    pcl.pts[0] = X; // camera coordinate x
+                    pcl.pts[1] = Y; // camera coordinate y
+                    pcl.pts[2] = Z;     // camera coordinate z
+                    // pcl.clr[0] = node.left_cam.image.at<cv::Vec3b>(r,c)(2);
+                    // pcl.clr[1] = node.left_cam.image.at<cv::Vec3b>(r,c)(1);
+                    // pcl.clr[2] = node.left_cam.image.at<cv::Vec3b>(r,c)(0);
 
                     node.pcl_vec.push_back(pcl);
                 }

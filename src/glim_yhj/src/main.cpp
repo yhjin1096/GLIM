@@ -8,8 +8,9 @@ int main(int argc, char** argv)
 
     int num_images;
     cv::Mat intrinsic_mat;
+    std::vector<double> time_seq;
     std::string file_path = "/root/data_odometry_color/dataset/sequences/00";
-    DatasetLoader(file_path, num_images, intrinsic_mat);
+    DatasetLoader(file_path, num_images, intrinsic_mat, time_seq);
     Utils UT;
     
     ros::Rate rate(30);
@@ -21,9 +22,9 @@ int main(int argc, char** argv)
         Node node(left_cam, right_cam);
         UT.getDisparityImage(node);
         UT.PointClouds(node);
-        pub_points.publish(UT.convert_PointCloud2(node.pcl_vec, "map"));
+        pub_points.publish(UT.convert_PointCloud2(node.pcl_vec, time_seq[i], "camera"));
 
-        cv::imshow("left_cam.image", left_cam.image);
+        // cv::imshow("left_cam.image", left_cam.image);
         cv::imshow("disparity8U", node.disparity8U);
         char k = cv::waitKey(1);
         if(k == 'q')
